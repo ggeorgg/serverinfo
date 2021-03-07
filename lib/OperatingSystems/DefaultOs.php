@@ -146,33 +146,37 @@ class DefaultOs implements IOperatingSystem {
 		$interfaces = glob('/sys/class/net/*');
 		$result = [];
 
-		foreach ($interfaces as $interface) {
-			$iface              = [];
-			$iface['interface'] = basename($interface);
-			$iface['mac']       = shell_exec('ip addr show dev ' . $iface['interface'] . ' | grep "link/ether " | cut -d \' \' -f 6  | cut -f 1 -d \'/\'');
-			$iface['ipv4']      = shell_exec('ip addr show dev ' . $iface['interface'] . ' | grep "inet " | cut -d \' \' -f 6  | cut -f 1 -d \'/\'');
-			$iface['ipv6']      = shell_exec('ip -o -6 addr show ' . $iface['interface'] . ' | sed -e \'s/^.*inet6 \([^ ]\+\).*/\1/\'');
-			if ($iface['interface'] !== 'lo') {
-				$iface['status'] = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/operstate');
-				$iface['speed']  = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/speed');
-				if ($iface['speed'] !== '') {
-					$iface['speed'] = $iface['speed'] . 'Mbps';
-				} else {
-					$iface['speed'] = 'unknown';
-				}
+		if (is_array($interfaces) || is_object($interfaces)) {
+			foreach ($interfaces as $interface) {
+				$iface              = [];
+				$iface['interface'] = basename($interface);
+				$iface['mac']       = shell_exec('ip addr show dev ' . $iface['interface'] . ' | grep "link/ether " | cut -d \' \' -f 6  | cut -f 1 -d \'/\'');
+				$iface['ipv4']      = shell_exec('ip addr show dev ' . $iface['interface'] . ' | grep "inet " | cut -d \' \' -f 6  | cut -f 1 -d \'/\'');
+				$iface['ipv6']      = shell_exec('ip -o -6 addr show ' . $iface['interface'] . ' | sed -e \'s/^.*inet6 \([^ ]\+\).*/\1/\'');
+				if ($iface['interface'] !== 'lo') {
+					$iface['status'] = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/operstate');
+					$iface['speed']  = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/speed');
+					if ($iface['speed'] !== '') {
+						$iface['speed'] = $iface['speed'] . 'Mbps';
+					} else {
+						$iface['speed'] = 'unknown';
+					}
 
-				$duplex = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/duplex');
-				if ($duplex !== '') {
-					$iface['duplex'] = 'Duplex: ' . $duplex;
+					$duplex = shell_exec('cat /sys/class/net/' . $iface['interface'] . '/duplex');
+					if ($duplex !== '') {
+						$iface['duplex'] = 'Duplex: ' . $duplex;
+					} else {
+						$iface['duplex'] = '';
+					}
 				} else {
+					$iface['status'] = 'up';
+					$iface['speed']  = 'unknown';
 					$iface['duplex'] = '';
 				}
-			} else {
-				$iface['status'] = 'up';
-				$iface['speed']  = 'unknown';
-				$iface['duplex'] = '';
+				$result[] = $iface;
 			}
-			$result[] = $iface;
+		} else {
+			// ToDo: Log a warning in the nextcloud log, that it was not possible to get the interfaces due to some unkown reasons?
 		}
 
 		return $result;
